@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="theme-color" content="#060a12"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="NinjaWT"/>
+<title>Ninja Workout Tracker</title>
+
+<!-- PWA Manifest inline -->
+<script>
+const manifest = {
+  name: "Ninja Workout Tracker",
+  short_name: "NinjaWT",
+  description: "Tracker de entrenamiento cyberpunk",
+  start_url: ".",
+  display: "standalone",
+  background_color: "#060a12",
+  theme_color: "#060a12",
+  orientation: "portrait",
+  icons: [
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23060a12'/><text y='130' x='20' font-size='130' font-family='monospace'>◈</text></svg>", sizes: "192x192", type: "image/svg+xml" },
+    { src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23060a12'/><text y='370' x='40' font-size='360' font-family='monospace' fill='%23ff2d78'>◈</text></svg>", sizes: "512x512", type: "image/svg+xml" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifest)], {type:"application/json"});
+const mUrl = URL.createObjectURL(blob);
+const link = document.createElement("link");
+link.rel = "manifest"; link.href = mUrl;
+document.head.appendChild(link);
+</script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg: #060a12;
+  --card: rgba(8,12,25,0.95);
+  --border: #1a1a2e;
+  --text: #e8eeff;
+  --text2: #888;
+  --text3: #444;
+  --c1: #ff2d78;
+  --c2: #00f0ff;
+  --c3: #b44fff;
+  --c4: #ff9f00;
+  --c5: #00ff88;
+  --c6: #ff5500;
+  --c7: #ffee00;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; background: var(--bg); }
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* ── Layout ── */
+#app { display: flex; flex-direction: column; height: 100%; }
+#scrollarea {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 10px calc(70px + var(--safe-bottom)) 10px;
+}
+
+/* ── Background canvas ── */
+#bgc { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+#scrollarea, nav { position: relative; z-index: 2; }
+
+/* ── Bottom nav ── */
+nav {
+  display: flex;
+  background: rgba(6,10,18,0.97);
+  border-top: 1px solid #1a1a2e;
+  backdrop-filter: blur(12px);
+  padding-bottom: var(--safe-bottom);
+  position: relative;
+  z-index: 10;
+}
+nav button {
+  flex: 1; border: none; background: transparent;
+  color: var(--text3); font-family: 'Rajdhani', sans-serif;
+  font-weight: 700; font-size: 10px; letter-spacing: 1.5px;
+  padding: 10px 4px 10px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+nav button .ico { font-size: 20px; line-height: 1; }
+nav button.active { color: #fff; }
+
+/* ── Cards ── */
+.card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  backdrop-filter: blur(8px);
+}
+.corner { position: absolute; width: 8px; height: 8px; }
+.tl { top:0; left:0; border-top: 1.5px solid; border-left: 1.5px solid; }
+.tr { top:0; right:0; border-top: 1.5px solid; border-right: 1.5px solid; }
+.bl { bottom:0; left:0; border-bottom: 1.5px solid; border-left: 1.5px solid; }
+.br { bottom:0; right:0; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+
+/* ── Inputs ── */
+input[type=text], input[type=number] {
+  background: rgba(0,240,255,0.05);
+  border: 1px solid rgba(0,240,255,0.2);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px; font-weight: 700;
+  padding: 11px 8px; outline: none;
+  width: 100%; text-align: center;
+}
+input:focus { border-color: var(--c2); box-shadow: 0 0 10px rgba(0,240,255,0.2); }
+input.sm { font-size: 14px; padding: 9px 10px; text-align: left; }
+input::placeholder { color: #2a2a3a; font-size: 14px; font-weight: 500; }
+
+/* ── Buttons ── */
+button { font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer; }
+.btn {
+  border-radius: 6px; border: 1px solid; background: transparent;
+  letter-spacing: 1px; font-family: 'Rajdhani', sans-serif; font-weight: 700;
+}
+.btn-lg { width: 100%; padding: 13px; font-size: 15px; letter-spacing: 2px; }
+
+/* ── Muscle chips ── */
+.chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.chip {
+  font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 12px; padding: 6px 10px; border-radius: 20px;
+  border: 1px solid; background: transparent; cursor: pointer;
+}
+
+/* ── Exercise rows ── */
+.exrow { margin-bottom: 5px; border: 1px solid var(--border); border-radius: 8px; background: rgba(8,12,25,.9); transition: border-color .2s, box-shadow .2s; }
+.exhdr { display: flex; align-items: center; padding: 13px 12px; cursor: pointer; gap: 8px; user-select: none; }
+.exbody { padding: 0 12px 14px; border-top: 1px solid var(--border); }
+.badge { font-size: 9px; padding: 2px 5px; border-radius: 3px; border: 1px solid; font-family: 'Share Tech Mono', monospace; }
+
+/* ── Progress bar ── */
+.pbar { height: 3px; background: #1a1a2e; border-radius: 2px; overflow: hidden; margin: 6px 0 10px; }
+.pbar-fill { height: 100%; background: linear-gradient(90deg, var(--c3), var(--c1)); border-radius: 2px; transition: width .4s; box-shadow: 0 0 8px var(--c3); }
+
+/* ── Session target ── */
+.sess-badge { display: inline-flex; align-items: center; font-size: 11px; padding: 3px 7px; border-radius: 4px; font-family: 'Share Tech Mono', monospace; margin: 2px 2px 2px 0; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: calc(70px + var(--safe-bottom) + 10px); right: 12px;
+  background: rgba(0,255,136,.12); border: 1px solid var(--c5);
+  color: var(--c5); font-family: 'Rajdhani', sans-serif; font-weight: 700;
+  font-size: 11px; padding: 6px 12px; border-radius: 6px; z-index: 300;
+  pointer-events: none; letter-spacing: 1px; opacity: 0; transition: opacity .3s;
+}
+
+/* ── Misc ── */
+.mono { font-family: 'Share Tech Mono', monospace; }
+.pulse { animation: pu 2s infinite; }
+@keyframes pu { 0%,100%{opacity:1} 50%{opacity:.45} }
+.scan { height: 1px; background: linear-gradient(90deg,transparent,currentColor,transparent); opacity: .3; margin: 8px 0; }
+.row { display: flex; align-items: center; gap: 8px; }
+.col { display: flex; flex-direction: column; }
+</style>
+</head>
+<body>
+<canvas id="bgc"></canvas>
+<div id="toast">◈ GUARDANDO</div>
+<div id="app">
+  <div id="scrollarea"></div>
+  <nav id="nav">
+    <button onclick="setTab('LOG')" id="btn-LOG" class="active">
+      <span class="ico" style="color:var(--c1)">◈</span><span>LOG</span>
+    </button>
+    <button onclick="setTab('STATS')" id="btn-STATS">
+      <span class="ico">◉</span><span>STATS</span>
+    </button>
+    <button onclick="setTab('SKILLS')" id="btn-SKILLS">
+      <span class="ico">◆</span><span>SKILLS</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ── Data ────────────────────────────────────────────────────
+const MUSCLES = {
+  Pecho:   { color:"#ff2d78", icon:"◈", ex:["Press banca plano","Press banca inclinado","Press banca declinado","Aperturas polea cruzada","Aperturas mancuernas","Fondos paralelas","Press mancuernas plano","Pullover"] },
+  Espalda: { color:"#00f0ff", icon:"◉", ex:["Dominadas","Remo barra","Remo polea baja","Jalón al pecho","Pull-over polea","Remo mancuerna","Encogimientos barra","Encogimientos mancuernas","Face pull","Remo máquina"] },
+  Piernas: { color:"#b44fff", icon:"◆", ex:["Sentadilla barra","Prensa","Extensión cuádriceps","Curl femoral","Peso muerto rumano","Hip thrust","Pantorrillas","Sentadilla búlgara","Zancadas","Peso muerto convencional"] },
+  Hombros: { color:"#ff9f00", icon:"◇", ex:["Press militar","Elevaciones laterales","Elevaciones frontales","Pájaros","Press Arnold","Press mancuernas sentado","Laterales polea"] },
+  Bíceps:  { color:"#00ff88", icon:"◑", ex:["Curl barra","Curl martillo","Curl concentrado","Curl predicador","Curl polea","Curl alterno","Curl araña"] },
+  Tríceps: { color:"#ff5500", icon:"◐", ex:["Polea cuerda","Extensión cabeza","Fondos banco","Barra Z","Polea barra recta","Fondos paralelas","Press cerrado"] },
+  ABS:     { color:"#ffee00", icon:"▣", ex:["Crunch suelo","Crunch polea","Plancha","Rueda abdominal","Elevación piernas","Russian twist","Crunch inverso","Dragon flag"] }
+};
+
+const INIT_SKILLS = [
+  { name:"Handstand", goal:"Hold 30s", sessions:[], progs:["Soporte pared 30s","Kick-up controlado","Balance libre 5s","Balance libre 15s","Balance libre 30s","HS push-up negativo","HS push-up 1 rep","HS push-up 5 reps"], checked:[] },
+  { name:"Muscle Up",  goal:"5 reps",  sessions:[], progs:["Dominadas explosivas x10","Transición con banda","Muscle up negativo","1 Muscle up","3 Muscle ups limpios","5 Muscle ups limpios","Muscle up anillas","Muscle up strict"], checked:[] }
+];
+
+// ── State ────────────────────────────────────────────────────
+let state = {
+  tab: "LOG",
+  muscle: "Pecho",
+  expanded: null,
+  drafts: {},       // { "Muscle__ex": [{w,r}] }
+  statsM: "Pecho",
+  data: {},
+  skills: JSON.parse(JSON.stringify(INIT_SKILLS)),
+  newEx: "",
+  newProgInputs: {},
+  newSkillN: "", newSkillG: "",
+  skillNotes: {}
+};
+
+// ── Persistence ───────────────────────────────────────────────
+const LS = {
+  load(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } },
+  save(k, v)   { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+function loadAll() {
+  state.data   = LS.load("nwt_data",   {});
+  state.skills = LS.load("nwt_skills", JSON.parse(JSON.stringify(INIT_SKILLS)));
+}
+
+let saveTimer = null;
+function persistData()  {
+  LS.save("nwt_data",   state.data);
+  showToast();
+}
+function persistSkills() {
+  LS.save("nwt_skills", state.skills);
+  showToast();
+}
+
+function showToast() {
+  const t = document.getElementById("toast");
+  t.style.opacity = "1";
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => t.style.opacity = "0", 1200);
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+const today = () => new Date().toISOString().split("T")[0];
+const volSess = s => s.sets.reduce((a,x)=>(a+(parseFloat(x.w)||0)*(parseInt(x.r)||0)),0);
+function trend(hist) {
+  if (!hist||hist.length<2) return 0;
+  const r=hist.slice(-4), ws=r.map(h=>Math.max(...h.sets.map(s=>parseFloat(s.w)||0)));
+  if (ws.length>=3&&ws.every(w=>w===ws[0])) return -1;
+  return ws[ws.length-1]>ws[0]?1:ws[ws.length-1]<ws[0]?-2:0;
+}
+const TREND = {"1":["▲","#00ff88"],"-1":["●","#ff9f00"],"-2":["▼","#e74c3c"],"0":["—","#555"]};
+const exList = m => [...(MUSCLES[m].ex), ...(state.data[`c_${m}`]||[])];
+const hist   = (m,ex) => state.data[`h_${m}_${ex}`]||[];
+const dKey   = (m,ex) => `${m}__${ex}`;
+const getDraft = (m,ex) => state.drafts[dKey(m,ex)] || [{w:"",r:""}];
+
+function setDraft(m, ex, sets) {
+  state.drafts[dKey(m,ex)] = sets;
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+function setTab(t) {
+  state.tab = t;
+  state.expanded = null;
+  ["LOG","STATS","SKILLS"].forEach(x => {
+    const b = document.getElementById(`btn-${x}`);
+    b.classList.toggle("active", x===t);
+    const ico = b.querySelector(".ico");
+    ico.style.color = x===t ? (x==="LOG"?"#ff2d78":x==="STATS"?"#00f0ff":"#b44fff") : "#333";
+    b.style.color = x===t ? "#fff" : "#333";
+  });
+  render();
+}
+
+// ── Render helpers ────────────────────────────────────────────
+function h(tag, attrs={}, ...children) {
+  const el = document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v]) => {
+    if (k==="style" && typeof v==="object") Object.assign(el.style, v);
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k,v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c==null||c===false) return;
+    el.appendChild(typeof c==="string"||typeof c==="number" ? document.createTextNode(c) : c);
+  });
+  return el;
+}
+
+function card(color, ...children) {
+  const div = h("div",{class:"card",...{}}, ...children);
+  div.style.borderColor = color+"55";
+  div.style.boxShadow = `0 0 14px ${color}12,inset 0 0 30px ${color}04`;
+  ["tl","tr","bl","br"].forEach(p=>{
+    const c=h("span",{class:`corner ${p}`});
+    c.style.borderColor=color+"88"; div.appendChild(c);
+  });
+  return div;
+}
+
+function statBox(label, val, color) {
+  return h("div",{style:{flex:1,textAlign:"center",background:color+"0e",borderRadius:"6px",padding:"7px 0",border:`1px solid ${color}2a`}},
+    h("div",{style:{fontSize:"20px",fontWeight:"700",color,fontFamily:"'Rajdhani',sans-serif"}},""+val),
+    h("div",{style:{fontSize:"9px",color:"#555",letterSpacing:"1px",fontFamily:"'Rajdhani',sans-serif"}},label)
+  );
+}
+
+// ── Sparkline SVG ─────────────────────────────────────────────
+function sparkline(h_data, color) {
+  const ws = h_data.slice(-8).map(h=>Math.max(...h.sets.map(s=>parseFloat(s.w)||0)));
+  if (ws.length<2) return null;
+  const mn=Math.min(...ws)*.9, mx=Math.max(...ws)*1.06||1;
+  const W=80,H=22;
+  const pts=ws.map((v,i)=>`${(i/(ws.length-1))*W},${H-((v-mn)/(mx-mn))*H}`).join(" ");
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+  svg.setAttribute("width",W); svg.setAttribute("height",H);
+  const pl=document.createElementNS("http://www.w3.org/2000/svg","polyline");
+  pl.setAttribute("points",pts); pl.setAttribute("fill","none");
+  pl.setAttribute("stroke",color); pl.setAttribute("stroke-width","1.5"); pl.setAttribute("stroke-linecap","round");
+  svg.appendChild(pl);
+  ws.forEach((v,i)=>{
+    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx",(i/(ws.length-1))*W); c.setAttribute("cy",H-((v-mn)/(mx-mn))*H);
+    c.setAttribute("r","2"); c.setAttribute("fill",color); svg.appendChild(c);
+  });
+  return svg;
+}
+
+// ── Volume chart SVG ──────────────────────────────────────────
+function volChart(sessions, color) {
+  if (!sessions||sessions.length<2) {
+    return h("div",{style:{fontSize:"12px",color:"#444",padding:"8px 0"}},"Necesitás al menos 2 sesiones.");
+  }
+  const sl=sessions.slice(-14), vals=sl.map(s=>volSess(s)), mx=Math.max(...vals,1);
+  const W=300,H=65;
+  const coords=sl.map((s,i)=>`${(i/(sl.length-1))*W},${H-((vals[i]/mx)*H*.88)}`).join(" ");
+  const area=`0,${H} `+coords+` ${W},${H}`;
+  const gid=`vg${color.replace("#","")}`;
+  const ns="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(ns,"svg");
+  svg.setAttribute("viewBox",`0 0 ${W} ${H+18}`);
+  svg.style.width="100%"; svg.style.display="block"; svg.style.overflow="visible";
+  // gradient
+  const defs=document.createElementNS(ns,"defs");
+  const grad=document.createElementNS(ns,"linearGradient");
+  grad.setAttribute("id",gid); grad.setAttribute("x1","0"); grad.setAttribute("y1","0"); grad.setAttribute("x2","0"); grad.setAttribute("y2","1");
+  [["0%",".3"],["100%","0"]].forEach(([off,op])=>{ const s=document.createElementNS(ns,"stop"); s.setAttribute("offset",off); s.setAttribute("stop-color",color); s.setAttribute("stop-opacity",op); grad.appendChild(s); });
+  defs.appendChild(grad); svg.appendChild(defs);
+  // area
+  const poly=document.createElementNS(ns,"polygon");
+  poly.setAttribute("points",area); poly.setAttribute("fill",`url(#${gid})`); svg.appendChild(poly);
+  // line
+  const line=document.createElementNS(ns,"polyline");
+  line.setAttribute("points",coords); line.setAttribute("fill","none"); line.setAttribute("stroke",color); line.setAttribute("stroke-width","2"); line.setAttribute("stroke-linecap","round"); svg.appendChild(line);
+  // dots + labels
+  const step=Math.max(1,Math.floor(sl.length/5));
+  sl.forEach((s,i)=>{
+    const cx=(i/(sl.length-1))*W, cy=H-((vals[i]/mx)*H*.88);
+    const c=document.createElementNS(ns,"circle"); c.setAttribute("cx",cx); c.setAttribute("cy",cy); c.setAttribute("r","3"); c.setAttribute("fill",color); svg.appendChild(c);
+    if(i%step===0){const t=document.createElementNS(ns,"text"); t.setAttribute("x",cx); t.setAttribute("y",H+14); t.setAttribute("text-anchor","middle"); t.setAttribute("font-size","7"); t.setAttribute("fill","#555"); t.setAttribute("font-family","Share Tech Mono"); t.textContent=s.date.slice(5); svg.appendChild(t);}
+  });
+  return svg;
+}
+
+// ── Render LOG tab ─────────────────────────────────────────────
+function renderLog() {
+  const mc = MUSCLES[state.muscle];
+  const frag = document.createDocumentFragment();
+
+  // Header card
+  const { total:tot, prog:pr, stall:st } = getTotals();
+  const hCard = card("#ff2d78",
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
+      h("div",{},
+        h("div",{style:{fontSize:"10px",color:"#ff2d78",letterSpacing:"3px",fontWeight:"700"}},"NINJA WORKOUT"),
+        h("div",{style:{fontSize:"18px",fontWeight:"700",color:"#fff"}},"TRACKER ",
+          h("span",{class:"mono",style:{fontSize:"12px",color:"#ff2d78"}},"v5")
+        )
+      ),
+      h("div",{style:{textAlign:"right"}},
+        h("div",{style:{fontSize:"11px",color:"#00ff88",fontWeight:"700"},class:"pulse"},"◉ VOLUMEN"),
+        h("div",{style:{fontSize:"10px",color:"#444"},class:"mono"},today())
+      )
+    ),
+    h("div",{style:{display:"flex",gap:"6px",marginTop:"10px"}},
+      statBox("EX",tot,"#00f0ff"), statBox("▲",pr,"#00ff88"), statBox("=",st,"#ff9f00")
+    )
+  );
+  frag.appendChild(hCard);
+
+  // Muscle chips
+  const chipsDiv = h("div",{class:"chips"});
+  Object.keys(MUSCLES).forEach(m => {
+    const mc2=MUSCLES[m];
+    const btn = h("button",{class:"chip", onclick:()=>{state.muscle=m;state.expanded=null;render();}}, mc2.icon+" "+m);
+    btn.style.borderColor = state.muscle===m ? mc2.color : "#1e2030";
+    btn.style.color = state.muscle===m ? mc2.color : "#555";
+    btn.style.background = state.muscle===m ? mc2.color+"1a" : "transparent";
+    if(state.muscle===m) btn.style.boxShadow=`0 0 8px ${mc2.color}50`;
+    chipsDiv.appendChild(btn);
+  });
+  frag.appendChild(chipsDiv);
+
+  // Exercise rows
+  exList(state.muscle).forEach((ex, idx) => {
+    const h_data = hist(state.muscle, ex);
+    const t = trend(h_data);
+    const lastSess = h_data[h_data.length-1];
+    const prevSess = [...h_data].reverse().find(s=>s.date!==today());
+    const todaySess = h_data.find(s=>s.date===today());
+    const isCustom = idx >= MUSCLES[state.muscle].ex.length;
+    const [ti,tc] = TREND[String(t)];
+    const isOpen = state.expanded===ex;
+    const draft = getDraft(state.muscle, ex);
+    const hasDraft = draft.some(s=>s.w||s.r);
+
+    const row = document.createElement("div");
+    row.className = "exrow";
+    if (isOpen) { row.style.borderColor=mc.color; row.style.boxShadow=`0 0 14px ${mc.color}35`; }
+
+    // Header
+    const hdr = h("div",{class:"exhdr", onclick:()=>{ state.expanded=isOpen?null:ex; render(); }},
+      h("span",{class:"mono",style:{fontSize:"10px",color:mc.color,minWidth:"20px",fontWeight:"700"}},String(idx+1).padStart(2,"0")),
+      h("span",{style:{flex:"1",fontSize:"14px",fontWeight:"600",color:isOpen?"#fff":"#c0c8e0"}},ex),
+      isCustom&&h("span",{class:"badge",style:{borderColor:"#252535",color:"#555"}},"USR"),
+      todaySess&&h("span",{class:"badge",style:{background:"#00ff8818",borderColor:"#00ff8840",color:"#00ff88"}},"HOY"),
+      hasDraft&&!todaySess&&h("span",{class:"badge",style:{background:"#ff9f0018",borderColor:"#ff9f0040",color:"#ff9f00"}},"●"),
+      lastSess&&h("span",{class:"mono",style:{fontSize:"11px",color:mc.color}},Math.max(...lastSess.sets.map(s=>parseFloat(s.w)||0))+"kg"),
+      h("span",{style:{fontSize:"13px",color:tc}},ti),
+      h("span",{style:{fontSize:"12px",color:mc.color}},isOpen?"▲":"▼")
+    );
+    row.appendChild(hdr);
+
+    if (isOpen) {
+      const body = document.createElement("div");
+      body.className = "exbody";
+      body.style.borderTopColor = mc.color+"44";
+
+      // Previous session target
+      if (prevSess) {
+        const draftVol = draft.reduce((a,s)=>(a+(parseFloat(s.w)||0)*(parseInt(s.r)||0)),0);
+        const draftMax = Math.max(...draft.map(s=>parseFloat(s.w)||0),0);
+        const prevMax  = Math.max(...prevSess.sets.map(s=>parseFloat(s.w)||0));
+        const beating  = draftMax>=prevMax && draftVol>0;
+
+        const targetDiv = h("div",{style:{marginTop:"10px",marginBottom:"10px"}},
+          h("div",{style:{fontSize:"10px",color:"#666",marginBottom:"4px",letterSpacing:"1px"}},"SESIÓN ANTERIOR · ",
+            h("span",{class:"mono"},prevSess.date)
+          ),
+          h("div",{style:{display:"flex",flexWrap:"wrap",alignItems:"center",gap:"4px",marginBottom:"6px"}},
+            ...prevSess.sets.map(s=>
+              h("span",{class:"sess-badge",style:{background:mc.color+"09",border:`1px solid ${mc.color}44`,color:mc.color}},`${s.w}kg × ${s.r}`)
+            ),
+            h("span",{style:{fontSize:"10px",color:"#555"}},`→ vol ${Math.round(volSess(prevSess))}kg`)
+          ),
+          draftVol>0&&h("div",{style:{fontSize:"11px",fontWeight:"700",color:beating?"#00ff88":"#ff9f00",letterSpacing:"1px"}},
+            beating?"✓ SUPERANDO sesión anterior":"· EN PROGRESO"
+          )
+        );
+        body.appendChild(targetDiv);
+      } else {
+        body.appendChild(h("div",{style:{fontSize:"11px",color:"#444",margin:"10px 0"}},"Primera sesión — establece tu marca!"));
+      }
+
+      // Today saved
+      if (todaySess) {
+        const td = h("div",{style:{padding:"8px 10px",background:"#00ff8808",borderRadius:"6px",marginBottom:"10px",border:"1px solid #00ff8830"}},
+          h("div",{style:{fontSize:"10px",color:"#00ff88",marginBottom:"3px",letterSpacing:"1px"}},"◈ GUARDADO HOY"),
+          h("div",{style:{fontSize:"13px",fontWeight:"600",color:"#c0c8e0"}},todaySess.sets.map(s=>`${s.w}kg×${s.r}`).join("  |  "))
+        );
+        const sp=sparkline(h_data,mc.color); if(sp) td.appendChild(sp);
+        body.appendChild(td);
+      }
+
+      // Draft sets
+      const setsContainer = document.createElement("div");
+      const redrawSets = () => {
+        setsContainer.innerHTML="";
+        const d=getDraft(state.muscle,ex);
+        d.forEach((s,i)=>{
+          const row2=h("div",{style:{display:"flex",gap:"6px",alignItems:"flex-end",marginBottom:"10px"}},
+            h("div",{class:"mono",style:{fontSize:"11px",color:mc.color,minWidth:"18px",fontWeight:"700",paddingBottom:"6px"}},i+1),
+            h("div",{style:{flex:"1"}},
+              h("div",{style:{fontSize:"9px",color:"#555",letterSpacing:"1px",marginBottom:"3px",textAlign:"center"}},"KG"),
+              (() => {
+                const inp=document.createElement("input"); inp.type="number"; inp.inputMode="decimal"; inp.placeholder="0"; inp.value=s.w;
+                inp.oninput=e=>{ const nd=[...getDraft(state.muscle,ex)]; nd[i]={...nd[i],w:e.target.value}; setDraft(state.muscle,ex,nd); };
+                return inp;
+              })()
+            ),
+            h("div",{style:{fontSize:"14px",color:"#333",paddingBottom:"12px",fontWeight:"700"}},"×"),
+            h("div",{style:{flex:"1"}},
+              h("div",{style:{fontSize:"9px",color:"#555",letterSpacing:"1px",marginBottom:"3px",textAlign:"center"}},"REPS"),
+              (() => {
+                const inp=document.createElement("input"); inp.type="number"; inp.inputMode="numeric"; inp.placeholder="0"; inp.value=s.r;
+                inp.oninput=e=>{ const nd=[...getDraft(state.muscle,ex)]; nd[i]={...nd[i],r:e.target.value}; setDraft(state.muscle,ex,nd); };
+                return inp;
+              })()
+            ),
+            h("button",{style:{fontSize:"13px",padding:"10px",border:"1px solid #1e2030",borderRadius:"6px",background:"transparent",color:"#555"}, onclick:()=>{ const nd=getDraft(state.muscle,ex).filter((_,j)=>j!==i); setDraft(state.muscle,ex,nd.length?nd:[{w:"",r:""}]); redrawSets(); }},"✕")
+          );
+          setsContainer.appendChild(row2);
+        });
+      };
+      redrawSets();
+      body.appendChild(setsContainer);
+
+      // Action buttons
+      const actRow=h("div",{style:{display:"flex",gap:"8px",marginTop:"4px"}},
+        h("button",{class:"btn",style:{flex:"1",padding:"12px",fontSize:"14px",color:mc.color,borderColor:mc.color+"55"}, onclick:()=>{ setDraft(state.muscle,ex,[...getDraft(state.muscle,ex),{w:"",r:""}]); redrawSets(); }},"+ SERIE"),
+        h("button",{class:"btn btn-lg",style:{flex:"2",color:"#00ff88",borderColor:"#00ff88",background:"#00ff8810",boxShadow:"0 0 10px #00ff8835"}, onclick:()=>saveSet(ex)},"GUARDAR ◈")
+      );
+      body.appendChild(actRow);
+      row.appendChild(body);
+    }
+
+    frag.appendChild(row);
+  });
+
+  // Add custom exercise
+  const addExDiv = h("div",{style:{display:"flex",gap:"6px",marginTop:"8px",padding:"10px",border:`1px dashed ${mc.color}33`,borderRadius:"8px",background:mc.color+"05"}});
+  const addInp = document.createElement("input");
+  addInp.type="text"; addInp.placeholder="+ Nuevo ejercicio..."; addInp.className="sm"; addInp.value=state.newEx;
+  addInp.oninput=e=>state.newEx=e.target.value;
+  addInp.onkeydown=e=>{ if(e.key==="Enter") doAddEx(); };
+  addInp.style.flex="1";
+  const addBtn = h("button",{class:"btn",style:{color:mc.color,borderColor:mc.color,background:mc.color+"15",fontSize:"13px",padding:"8px 14px"}, onclick:doAddEx},"ADD");
+  addExDiv.appendChild(addInp); addExDiv.appendChild(addBtn);
+  frag.appendChild(addExDiv);
+
+  return frag;
+}
+
+// ── Render STATS tab ──────────────────────────────────────────
+function renderStats() {
+  const frag = document.createDocumentFragment();
+
+  // Volume chart card
+  const mc2 = MUSCLES[state.statsM];
+  const vd = getVolData(state.statsM);
+  const vc = card("#b44fff",
+    h("div",{style:{fontSize:"11px",color:"#b44fff",letterSpacing:"3px",fontWeight:"700",marginBottom:"10px"}},"VOLUMEN POR SESIÓN"),
+    // muscle chips
+    (() => {
+      const d=h("div",{class:"chips",style:{marginBottom:"10px"}});
+      Object.keys(MUSCLES).forEach(m=>{
+        const mc3=MUSCLES[m];
+        const b=h("button",{class:"chip",style:{fontSize:"11px",padding:"5px 8px",borderRadius:"16px",borderColor:state.statsM===m?mc3.color:"#1e2030",color:state.statsM===m?mc3.color:"#555",background:state.statsM===m?mc3.color+"18":"transparent"}, onclick:()=>{state.statsM=m;render();}},mc3.icon+" "+m);
+        d.appendChild(b);
+      });
+      return d;
+    })(),
+    h("div",{style:{fontSize:"10px",color:"#666",marginBottom:"6px"}},
+      h("span",{style:{color:mc2.color,marginRight:"6px"}},"◈"),
+      "kg·reps totales por sesión"
+    ),
+    volChart(vd, mc2.color),
+    vd.length>=2&&h("div",{style:{display:"flex",gap:"6px",marginTop:"10px"}},
+      statBox("SESIONES",vd.length,"#00f0ff"),
+      statBox("MEJOR",Math.round(Math.max(...vd.map(s=>volSess(s))))+"kg","#00ff88"),
+      statBox("ÚLTIMA",Math.round(volSess(vd[vd.length-1]))+"kg",mc2.color)
+    )
+  );
+  frag.appendChild(vc);
+
+  // Per-muscle exercise list
+  Object.keys(MUSCLES).forEach(m=>{
+    const exs=exList(m).filter(ex=>hist(m,ex).length>0);
+    if(!exs.length) return;
+    const mc3=MUSCLES[m];
+    const rows=exs.map(ex=>{
+      const hd=hist(m,ex), t=trend(hd), last=hd[hd.length-1];
+      const mxW=last?Math.max(...last.sets.map(s=>parseFloat(s.w)||0)):0;
+      const [ti,tc]=TREND[String(t)];
+      const row=h("div",{style:{display:"flex",alignItems:"center",gap:"8px",padding:"7px 0",borderBottom:"1px solid #0f1525"}},
+        h("span",{style:{flex:"1",fontSize:"13px",fontWeight:"500",color:"#c0c8e0"}},ex),
+        (() => { const sp=sparkline(hd,mc3.color); return sp||h("div",{}); })(),
+        h("span",{class:"mono",style:{fontSize:"12px",color:mc3.color,minWidth:"40px",textAlign:"right"}},mxW+"kg"),
+        h("span",{style:{fontSize:"14px",color:tc,minWidth:"14px",textAlign:"center"}},ti)
+      );
+      return row;
+    });
+    const c=card(mc3.color,
+      h("div",{style:{fontSize:"12px",color:mc3.color,letterSpacing:"2px",marginBottom:"8px",fontWeight:"700"}},mc3.icon+" "+m.toUpperCase()),
+      ...rows
+    );
+    frag.appendChild(c);
+  });
+
+  return frag;
+}
+
+// ── Render SKILLS tab ─────────────────────────────────────────
+function renderSkills() {
+  const frag = document.createDocumentFragment();
+
+  state.skills.forEach((sk,si)=>{
+    const progs=sk.progs||[], checked=sk.checked||[];
+    const done=checked.length, total=progs.length, pct=total?Math.round((done/total)*100):0;
+
+    const progRows=progs.map((p,pi)=>{
+      const chk=checked.includes(p);
+      const row=h("div",{style:{display:"flex",alignItems:"center",gap:"10px",padding:"10px 0",borderBottom:"1px solid #0f1525"}},
+        h("div",{style:{width:"22px",height:"22px",border:`1.5px solid ${chk?"#b44fff":"#333"}`,borderRadius:"4px",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:"0",cursor:"pointer",background:chk?"#b44fff20":"transparent",boxShadow:chk?"0 0 6px #b44fff88":"none",fontSize:"13px",color:"#b44fff"}, onclick:()=>toggleSkillCheck(si,p)},chk?"✓":""),
+        h("span",{style:{flex:"1",fontSize:"13px",fontWeight:"600",color:chk?"#fff":"#888",cursor:"pointer"}, onclick:()=>toggleSkillCheck(si,p)},p),
+        h("button",{style:{fontSize:"11px",padding:"4px 8px",border:"1px solid #1e1e2e",borderRadius:"4px",background:"transparent",color:"#444",cursor:"pointer"}, onclick:()=>removeSkillProg(si,p)},"✕")
+      );
+      return row;
+    });
+
+    // New progression input
+    const npInp=document.createElement("input"); npInp.type="text"; npInp.placeholder="+ Nueva progresión..."; npInp.className="sm"; npInp.value=state.newProgInputs[si]||"";
+    npInp.oninput=e=>state.newProgInputs[si]=e.target.value;
+    npInp.onkeydown=e=>{ if(e.key==="Enter") addProgItem(si); };
+
+    // Session log input
+    const snInp=document.createElement("input"); snInp.type="text"; snInp.placeholder="Nota de sesión..."; snInp.className="sm"; snInp.value=state.skillNotes[si]||"";
+    snInp.oninput=e=>state.skillNotes[si]=e.target.value;
+
+    const c=card("#b44fff",
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px"}},
+        h("div",{},
+          h("div",{style:{fontSize:"16px",fontWeight:"700",color:"#fff",letterSpacing:"1px"}},sk.name.toUpperCase()),
+          h("div",{style:{fontSize:"11px",color:"#555",marginTop:"1px"}},sk.description||"")
+        ),
+        h("div",{style:{textAlign:"right"}},
+          h("div",{style:{fontSize:"9px",color:"#555"}},"OBJETIVO"),
+          h("div",{style:{fontSize:"12px",color:"#b44fff",fontWeight:"600"}},sk.goal),
+          h("button",{style:{fontSize:"10px",marginTop:"4px",padding:"2px 8px",border:"1px solid #222",borderRadius:"4px",background:"transparent",color:"#444",cursor:"pointer"}, onclick:()=>{ if(confirm("Eliminar skill?")) { state.skills=state.skills.filter((_,j)=>j!==si); persistSkills(); render(); }}},"eliminar")
+        )
+      ),
+      h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"10px",color:"#666",marginBottom:"5px"}},
+        h("span",{style:{color:"#b44fff",letterSpacing:"2px",fontWeight:"700"}},"PROGRESIONES"),
+        h("span",{class:"mono"},`${done}/${total} · ${pct}%`)
+      ),
+      total>0&&h("div",{class:"pbar"},h("div",{class:"pbar-fill",style:{width:pct+"%"}})),
+      ...progRows,
+      // Add progression
+      h("div",{style:{display:"flex",gap:"6px",marginTop:"8px",paddingTop:"8px",borderTop:"1px solid #1a1a2e"}},
+        npInp,
+        h("button",{class:"btn",style:{color:"#b44fff",borderColor:"#b44fff55",background:"#b44fff12",fontSize:"13px",padding:"8px 12px"}, onclick:()=>addProgItem(si)},"ADD")
+      ),
+      // Session history
+      h("div",{style:{marginTop:"12px",paddingTop:"10px",borderTop:"1px solid #1a1a2e"}},
+        h("div",{style:{fontSize:"10px",color:"#b44fff",letterSpacing:"2px",fontWeight:"700",marginBottom:"6px"}},`HISTORIAL (${sk.sessions.length})`),
+        ...sk.sessions.slice(-3).reverse().map(s=>
+          h("div",{style:{fontSize:"12px",padding:"5px 0",borderBottom:"1px solid #0a0e18",display:"flex",gap:"8px",color:"#c0c8e0"}},
+            h("span",{class:"mono",style:{color:"#444"}},s.date.slice(5)),
+            h("span",{style:{flex:"1"}},s.note)
+          )
+        ),
+        h("div",{style:{display:"flex",gap:"6px",marginTop:"8px"}},
+          snInp,
+          h("button",{class:"btn",style:{color:"#b44fff",borderColor:"#b44fff",background:"#b44fff12",fontSize:"13px",padding:"8px 12px"}, onclick:()=>logSkillSession(si)},"LOG")
+        )
+      )
+    );
+    frag.appendChild(c);
+  });
+
+  // New skill
+  const nsN=document.createElement("input"); nsN.type="text"; nsN.placeholder="Nombre del skill..."; nsN.className="sm"; nsN.value=state.newSkillN; nsN.oninput=e=>state.newSkillN=e.target.value;
+  const nsG=document.createElement("input"); nsG.type="text"; nsG.placeholder="Objetivo..."; nsG.className="sm"; nsG.value=state.newSkillG; nsG.oninput=e=>state.newSkillG=e.target.value;
+  const nc=card("#00f0ff",
+    h("div",{style:{fontSize:"11px",color:"#00f0ff",letterSpacing:"3px",fontWeight:"700",marginBottom:"10px"}},"+ NUEVO SKILL"),
+    h("div",{style:{display:"flex",flexDirection:"column",gap:"8px"}},
+      nsN, nsG,
+      h("button",{class:"btn btn-lg",style:{color:"#00f0ff",borderColor:"#00f0ff",background:"#00f0ff10",boxShadow:"0 0 10px #00f0ff28"}, onclick:addNewSkill},"AGREGAR SKILL ◈")
+    )
+  );
+  frag.appendChild(nc);
+  return frag;
+}
+
+// ── Actions ───────────────────────────────────────────────────
+function saveSet(ex) {
+  const draft=getDraft(state.muscle,ex);
+  const valid=draft.filter(s=>parseFloat(s.w)>0&&parseInt(s.r)>0);
+  if(!valid.length) return;
+  const k=`h_${state.muscle}_${ex}`, prev=state.data[k]||[];
+  const upd=[...prev.filter(h=>h.date!==today()),{date:today(),sets:valid}];
+  state.data[k]=upd.slice(-30);
+  setDraft(state.muscle,ex,[{w:"",r:""}]);
+  state.expanded=null;
+  persistData(); render();
+}
+
+function doAddEx() {
+  const v=state.newEx.trim(); if(!v)return;
+  const k=`c_${state.muscle}`, cur=state.data[k]||[];
+  if(cur.includes(v))return;
+  state.data[k]=[...cur,v]; state.newEx="";
+  persistData(); render();
+}
+
+function toggleSkillCheck(si,p) {
+  const sk=state.skills[si], ch=sk.checked||[];
+  sk.checked=ch.includes(p)?ch.filter(x=>x!==p):[...ch,p];
+  persistSkills(); render();
+}
+function removeSkillProg(si,p) {
+  const sk=state.skills[si];
+  sk.progs=(sk.progs||[]).filter(x=>x!==p);
+  sk.checked=(sk.checked||[]).filter(x=>x!==p);
+  persistSkills(); render();
+}
+function addProgItem(si) {
+  const v=(state.newProgInputs[si]||"").trim(); if(!v)return;
+  state.skills[si].progs=[...(state.skills[si].progs||[]),v];
+  state.newProgInputs[si]=""; persistSkills(); render();
+}
+function logSkillSession(si) {
+  const note=(state.skillNotes[si]||"").trim(); if(!note)return;
+  state.skills[si].sessions=[...state.skills[si].sessions,{date:today(),note}];
+  state.skillNotes[si]=""; persistSkills(); render();
+}
+function addNewSkill() {
+  if(!state.newSkillN.trim())return;
+  state.skills.push({name:state.newSkillN.trim(),description:"",sessions:[],goal:state.newSkillG.trim()||"—",progs:[],checked:[]});
+  state.newSkillN=""; state.newSkillG=""; persistSkills(); render();
+}
+
+// ── Stats helpers ─────────────────────────────────────────────
+function getTotals() {
+  let total=0,prog=0,stall=0;
+  Object.keys(MUSCLES).forEach(m=>exList(m).forEach(ex=>{ const h=hist(m,ex); if(h.length){total++;const t=trend(h);if(t===1)prog++;if(t===-1)stall++;}}));
+  return{total,prog,stall};
+}
+function getVolData(m) {
+  const map={};
+  exList(m).forEach(ex=>hist(m,ex).forEach(s=>{ map[s.date]=(map[s.date]||0)+volSess(s); }));
+  return Object.entries(map).sort(([a],[b])=>a.localeCompare(b)).map(([date,v])=>({date,sets:[{w:v,r:1}]}));
+}
+
+// ── Main render ───────────────────────────────────────────────
+function render() {
+  const area=document.getElementById("scrollarea");
+  area.innerHTML="";
+  area.scrollTop=0;
+  if      (state.tab==="LOG")    area.appendChild(renderLog());
+  else if (state.tab==="STATS")  area.appendChild(renderStats());
+  else if (state.tab==="SKILLS") area.appendChild(renderSkills());
+}
+
+// ── Animated background ───────────────────────────────────────
+function initBG() {
+  const c=document.getElementById("bgc"), ctx=c.getContext("2d");
+  let w=c.width=window.innerWidth, h2=c.height=window.innerHeight;
+  window.addEventListener("resize",()=>{w=c.width=window.innerWidth;h2=c.height=window.innerHeight;});
+  const COLS=["#00f0ff","#ff2d78","#b44fff"];
+  const pts=Array.from({length:28},()=>({x:Math.random()*w,y:Math.random()*h2,vx:(Math.random()-.5)*.22,vy:(Math.random()-.5)*.22,r:Math.random()*1.1+.3,c:COLS[Math.floor(Math.random()*3)],a:Math.random()*.35+.08}));
+  let sy=0;
+  const draw=()=>{
+    ctx.clearRect(0,0,w,h2);
+    ctx.strokeStyle="rgba(0,240,255,0.03)"; ctx.lineWidth=1;
+    for(let x=0;x<w;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h2);ctx.stroke();}
+    for(let y=0;y<h2;y+=55){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+    sy=(sy+.45)%h2;
+    const sg=ctx.createLinearGradient(0,sy-22,0,sy+22);
+    sg.addColorStop(0,"rgba(0,240,255,0)");sg.addColorStop(.5,"rgba(0,240,255,0.03)");sg.addColorStop(1,"rgba(0,240,255,0)");
+    ctx.fillStyle=sg;ctx.fillRect(0,sy-22,w,44);
+    pts.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=w;if(p.x>w)p.x=0;if(p.y<0)p.y=h2;if(p.y>h2)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.c+Math.floor(p.a*255).toString(16).padStart(2,"0");ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<85){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(0,240,255,${.04*(1-d/85)})`;ctx.lineWidth=.5;ctx.stroke();}
+    }
+    requestAnimationFrame(draw);
+  };
+  draw();
+}
+
+// ── Service Worker (offline) ──────────────────────────────────
+if ("serviceWorker" in navigator) {
+  const swCode = `
+    const CACHE = "nwt-v1";
+    self.addEventListener("install", e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(["/"])));
+      self.skipWaiting();
+    });
+    self.addEventListener("activate", e => {
+      e.waitUntil(clients.claim());
+    });
+    self.addEventListener("fetch", e => {
+      e.respondWith(
+        caches.match(e.request).then(r => r || fetch(e.request).catch(() => r))
+      );
+    });
+  `;
+  const swBlob = new Blob([swCode], {type:"application/javascript"});
+  const swUrl  = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+
+// ── Init ──────────────────────────────────────────────────────
+loadAll();
+initBG();
+render();
+</script>
+</body>
+</html>
